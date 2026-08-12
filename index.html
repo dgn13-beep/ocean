@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>우리반 퀘스트 - 스쿨 파트너</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              indigo: '#6366f1',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              neonGreen: '#00ffcc',
+              neonPink: '#ff007f',
+              darkBg: '#0f172a',
+              cardBg: '#1e293b'
+            }
+          },
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+            display: ['Jua', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Canvas Confetti for XP Achievements -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    * {
+      touch-action: manipulation;
+      user-select: none;
+    }
+    body {
+      font-family: 'Pretendard', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .swipe-card {
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      cursor: grab;
+    }
+    .swipe-card:active {
+      cursor: grabbing;
+    }
+
+    .glow-indigo {
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+    .glow-amber {
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
+    .animate-pulse-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    #rouletteCanvas {
+      transition: transform 4s cubic-bezier(0.15, 0.99, 0.35, 1);
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-0 sm:p-4">
+
+  <div id="appFrame" class="w-full max-w-[430px] h-screen sm:h-[880px] bg-white dark:bg-slate-900 sm:rounded-[36px] border-0 sm:border-[8px] border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300">
+
+    <!-- TOP HEADER / USER BAR -->
+    <header class="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 sticky top-0 z-30 flex items-center justify-between transition-colors">
+      <!-- User Info & Level -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="openProfileModal()">
+        <div class="relative">
+          <div id="userAvatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center font-bold text-lg text-white border-2 border-indigo-400 shadow-sm">
+            🎒
+          </div>
+          <span id="userLevelBadge" class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full border border-white dark:border-slate-900">
+            Lv.1
+          </span>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span id="userStudentInfo" class="text-xs font-semibold text-slate-500 dark:text-slate-400">1학년 2반 15번</span>
+            <span id="userName" class="text-sm font-bold text-slate-900 dark:text-white">김모험</span>
+            <span id="userTitleBadge" class="text-[10px] font-extrabold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700/80 px-2 py-0.5 rounded-full">🌱 신입 모험가</span>
+          </div>
+          <!-- XP Progress Bar -->
+          <div class="w-28 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden mt-1 border border-slate-300/50 dark:border-slate-700/50">
+            <div id="xpProgressBar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full w-[25%] transition-all duration-500"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Icons: Leaderboard & Notification / Theme Toggle -->
+      <div class="flex items-center space-x-2">
+        <button onclick="openLeaderboardModal()" class="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700/60 flex items-center justify-center text-amber-500 dark:text-amber-400 transition active:scale-95" title="학급 대항전">
+          <i class="fa-solid font-bold fa-trophy text-sm"></i>
+        </button>
+        <!-- Theme Toggle Button (Day / Night Mode) -->
+        <button onclick="toggleTheme()" id="themeToggleBtn" class="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-200 dark:border-slate-700/60 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-amber-300 transition active:scale-95" title="화이트/다크 모드 변경">
+          <i id="themeIcon" class="fa-solid fa-moon text-sm"></i>
+          <span id="themeModeText">밤</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="contentContainer" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-5 pb-24">
+      
+      <!-- PAGE 1: HOME / DASHBOARD (Default View) -->
+      <section id="viewHome" class="space-y-5">
+        
+        <!-- Meal Energy & Countdown Timer Hero Card -->
+        <div class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/60 via-slate-100 dark:via-slate-900 to-white dark:to-slate-900 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl p-4 relative overflow-hidden shadow-md dark:shadow-lg transition-colors">
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none"></div>
+
+          <!-- Real-time Class Timer -->
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-3 mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping"></span>
+              <span id="currentPeriodText" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">3교시 수업 중</span>
+            </div>
+            <div class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+              <i class="fa-regular fa-clock mr-1 text-indigo-500 dark:text-indigo-400"></i><span id="periodCountdown">쉬는 시간까지 12분 40초</span>
+            </div>
+          </div>
+
+          <!-- Today Lunch Summary & Energy Index -->
+          <div class="flex items-center justify-between">
+            <div class="space-y-1">
+              <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">오늘의 급식 에너자이저 🍱</div>
+              <div class="text-sm font-bold text-slate-900 dark:text-white line-clamp-1" id="homeLunchMenuSummary">
+                차돌된장찌개, 치킨너겟, 깍두기, 멜론
+              </div>
+              <div class="text-[11px] text-indigo-600 dark:text-indigo-300">
+                칼로리 <span class="font-bold text-slate-900 dark:text-white">740 kcal</span> | 고단백 파워업!
+              </div>
+            </div>
+
+            <!-- Energy Gauge Radial Circle -->
+            <div class="flex flex-col items-center justify-center min-w-[72px]">
+              <div class="relative w-14 h-14 flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <path class="text-slate-200 dark:text-slate-800" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path id="energyCirclePath" class="text-indigo-500 stroke-current transition-all duration-1000 ease-out" stroke-dasharray="88, 100" stroke-width="3.5" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <span id="energyGaugePercent" class="absolute text-xs font-extrabold text-slate-900 dark:text-white font-jua">88%</span>
+              </div>
+              <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 mt-0.5">에너지 지수</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily Quests Section -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-scroll text-amber-500 dark:text-amber-400"></i> 오늘의 학급 퀘스트
+            </h2>
+            <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400" id="questProgressText">0 / 3 완료</span>
+          </div>
+
+          <div class="space-y-2" id="dailyQuestList">
+            <!-- Quest Items populated by JS -->
+          </div>
+        </div>
+
+        <!-- Tinder/Story Swipe Card Section -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-fire-flame-curved text-pink-500"></i> 스와이프 미니 투표 & 칭찬
+            </h2>
+            <span class="text-[10px] text-slate-500 dark:text-slate-400">← NO / YES →</span>
+          </div>
+
+          <!-- Swipe Card Deck Container -->
+          <div class="relative w-full h-[220px] flex items-center justify-center">
+            <div id="swipeDeck" class="relative w-full h-full flex items-center justify-center">
+              <!-- Swipe Card Stack Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Swipe Manual Buttons -->
+          <div class="flex justify-center items-center space-x-6 mt-3">
+            <button onclick="handleSwipe('left')" class="w-12 h-12 rounded-full bg-white dark:bg-slate-800 border border-rose-400 dark:border-rose-500/40 text-rose-500 flex items-center justify-center text-lg shadow-md active:scale-95 transition hover:bg-rose-50 dark:hover:bg-rose-500/10">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <button onclick="handleSwipe('right')" class="w-12 h-12 rounded-full bg-white dark:bg-slate-800 border border-emerald-400 dark:border-emerald-500/40 text-emerald-500 dark:text-emerald-400 flex items-center justify-center text-lg shadow-md active:scale-95 transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
+              <i class="fa-solid fa-heart"></i>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="viewLunch" class="space-y-5 hidden">
+        <!-- Sub Header Toggle -->
+        <div class="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700/80">
+          <button id="tabBtnLunch" onclick="switchLunchSubTab('lunch')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition">오늘의 급식</button>
+          <button id="tabBtnTime" onclick="switchLunchSubTab('time')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">시간표</button>
+        </div>
+
+        <!-- Lunch Content -->
+        <div id="subViewLunch" class="space-y-4">
+          <!-- Main Meal Card -->
+          <div class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3 shadow-sm">
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">중식 메뉴</span>
+                <h3 class="text-base font-bold text-slate-900 dark:text-white mt-1">2026년 8월 12일 수요일</h3>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-slate-500 dark:text-slate-400">평점</div>
+                <div class="text-amber-500 dark:text-amber-400 font-extrabold text-sm flex items-center gap-1">
+                  <i class="fa-solid fa-star"></i> <span id="avgLunchRating">4.8</span> / 5.0
+                </div>
+              </div>
+            </div>
+
+            <!-- Lunch Menu Detailed Pills -->
+            <div id="lunchDetailedList" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-800 dark:text-slate-200">
+              <!-- JS Populated -->
+            </div>
+
+            <!-- Meal Photo Upload / gourmet badge action -->
+            <div class="border-t border-slate-200 dark:border-slate-700/70 pt-3 flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-slate-900 dark:text-white">미식가 뱃지 챌린지 🏅</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">인증샷 찍고 리뷰 작성 시 +10 XP</div>
+              </div>
+              <button onclick="openLunchReviewModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1">
+                <i class="fa-solid fa-camera"></i> 인증하기
+              </button>
+            </div>
+          </div>
+
+          <!-- Nutritional Breakdown -->
+          <div class="bg-slate-100/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-4 space-y-2">
+            <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300">영양성분 리포트</h4>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div class="text-[10px] text-slate-500 dark:text-slate-400">단백질</div>
+                <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400">38g (풍부)</div>
+              </div>
+              <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div class="text-[10px] text-slate-500 dark:text-slate-400">탄수화물</div>
+                <div class="text-xs font-bold text-amber-600 dark:text-amber-400">92g (적정)</div>
+              </div>
+              <div class="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div class="text-[10px] text-slate-500 dark:text-slate-400">지방</div>
+                <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400">22g (균형)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timetable Content -->
+        <div id="subViewTime" class="space-y-3 hidden">
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 flex justify-between items-center px-1">
+            <span id="timetableTitleText">우리반 주간 시간표</span>
+            <span class="text-indigo-600 dark:text-indigo-400">오늘 (수요일)</span>
+          </div>
+
+          <!-- Weekly Timetable Grid -->
+          <div class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 overflow-x-auto shadow-sm">
+            <table class="w-full text-center text-xs">
+              <thead>
+                <tr class="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/80">
+                  <th class="pb-2 font-medium">교시</th>
+                  <th class="pb-2 font-medium">월</th>
+                  <th class="pb-2 font-medium">화</th>
+                  <th class="pb-2 font-medium text-indigo-600 dark:text-indigo-400 font-bold">수</th>
+                  <th class="pb-2 font-medium">목</th>
+                  <th class="pb-2 font-medium">금</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 dark:divide-slate-700/50 text-slate-800 dark:text-slate-200" id="timetableBody">
+                <!-- JS Inserted Timetable Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="viewCleaning" class="space-y-5 hidden">
+        <!-- Sub Nav Toggle -->
+        <div class="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700/80">
+          <button id="tabBtnRoulette" onclick="switchCleanSubTab('roulette')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition">청소 룰렛 & MVP</button>
+          <button id="tabBtnLost" onclick="switchCleanSubTab('lost')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">분실물 탐정소</button>
+        </div>
+
+        <!-- Roulette & Cleaning View -->
+        <div id="subViewRoulette" class="space-y-4">
+          <!-- Random Cleaning Roulette Card -->
+          <div class="bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center space-y-3 shadow-sm">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">공정 만점</span>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white mt-1">오늘의 청소구역 랜덤 룰렛 🎯</h3>
+            </div>
+
+            <!-- Canvas Wheel -->
+            <div class="relative w-52 h-52 mx-auto flex items-center justify-center">
+              <!-- Pointer -->
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-amber-500 dark:text-amber-400 text-2xl drop-shadow">
+                <i class="fa-solid fa-caret-down"></i>
+              </div>
+              <canvas id="rouletteCanvas" width="200" height="200" class="rounded-full shadow-lg border-2 border-slate-300 dark:border-slate-700"></canvas>
+            </div>
+
+            <button id="btnSpinWheel" onclick="spinRoulette()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white dark:text-slate-950 font-black text-sm rounded-xl shadow-lg active:scale-95 transition">
+              룰렛 돌리기 (+20 XP 준비)
+            </button>
+          </div>
+
+          <!-- Clean MVP Sticker Section -->
+          <div class="bg-slate-100/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white">오늘의 청소 MVP 익명 스티커 🌟</h4>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">열심히 청소한 친구에게 수고했단 스티커를!</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2" id="mvpStickerGrid">
+              <button onclick="sendMVPSticker('🧹 청소의 신')" class="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-center transition active:scale-95 shadow-sm">
+                <div class="text-xl mb-1">🧹</div>
+                <div class="text-[11px] font-bold text-slate-800 dark:text-slate-200">청소의 신</div>
+              </button>
+              <button onclick="sendMVPSticker('✨ 분리수거 왕')" class="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-center transition active:scale-95 shadow-sm">
+                <div class="text-xl mb-1">✨</div>
+                <div class="text-[11px] font-bold text-slate-800 dark:text-slate-200">분리수거 왕</div>
+              </button>
+              <button onclick="sendMVPSticker('🛡️ 황금 수호자')" class="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-center transition active:scale-95 shadow-sm">
+                <div class="text-xl mb-1">🛡️</div>
+                <div class="text-[11px] font-bold text-slate-800 dark:text-slate-200">황금 수호자</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lost Detective View -->
+        <div id="subViewLost" class="space-y-4 hidden">
+          <!-- Register Lost Item Action Bar -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-slate-900 dark:text-white">당근마켓 스타일 분실물 탐정소 🔍</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">습득물 제보 시 +30 XP 보상!</p>
+            </div>
+            <button onclick="openLostReportModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl active:scale-95 transition shadow flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> 제보하기
+            </button>
+          </div>
+
+          <!-- Lost Item Cards Grid -->
+          <div id="lostItemContainer" class="space-y-2.5">
+            <!-- JS Rendered Lost Items -->
+          </div>
+        </div>
+      </section>
+
+      <section id="viewCommunity" class="space-y-5 hidden">
+        <!-- Sub Nav Toggle -->
+        <div class="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700/80">
+          <button id="tabBtnBamboo" onclick="switchCommSubTab('bamboo')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition">기분 날씨 & 대나무숲</button>
+          <button id="tabBtnClub" onclick="switchCommSubTab('club')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">동아리 MBTI 테스트</button>
+        </div>
+
+        <!-- Mood Weather & Bamboo Forest Subview -->
+        <div id="subViewBamboo" class="space-y-4">
+          <!-- Mood Weather Voting Card -->
+          <div class="bg-gradient-to-r from-indigo-100 dark:from-indigo-900/40 to-purple-100 dark:to-purple-900/40 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl p-4 space-y-3 shadow-sm">
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="text-xs font-bold text-slate-900 dark:text-white">오늘의 학급 기분 날씨 ☀️🌧️</h3>
+                <p class="text-[11px] text-slate-600 dark:text-slate-300">익명 투표로 학급 분위기를 알려주세요</p>
+              </div>
+              <span id="votedMoodBadge" class="text-xs font-bold text-amber-600 dark:text-amber-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 hidden">투표완료 (+10XP)</span>
+            </div>
+
+            <!-- Mood Buttons -->
+            <div class="grid grid-cols-4 gap-2" id="moodButtonsGrid">
+              <button id="btnMoodSunny" onclick="voteMood('sunny')" class="p-2 bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center transition active:scale-95 shadow-sm">
+                <span class="text-2xl">☀️</span>
+                <span class="text-[10px] font-bold text-slate-800 dark:text-slate-200 mt-1">최고예요</span>
+              </button>
+              <button id="btnMoodCloudy" onclick="voteMood('cloudy')" class="p-2 bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center transition active:scale-95 shadow-sm">
+                <span class="text-2xl">⛅</span>
+                <span class="text-[10px] font-bold text-slate-800 dark:text-slate-200 mt-1">평범해요</span>
+              </button>
+              <button id="btnMoodRainy" onclick="voteMood('rainy')" class="p-2 bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center transition active:scale-95 shadow-sm">
+                <span class="text-2xl">🌧️</span>
+                <span class="text-[10px] font-bold text-slate-800 dark:text-slate-200 mt-1">피곤해요</span>
+              </button>
+              <button id="btnMoodLightning" onclick="voteMood('lightning')" class="p-2 bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center transition active:scale-95 shadow-sm">
+                <span class="text-2xl">⚡</span>
+                <span class="text-[10px] font-bold text-slate-800 dark:text-slate-200 mt-1">힘들어요</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Safe Bamboo Forest Rolling Paper Feed -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-tree text-emerald-500 dark:text-emerald-400"></i> 클린 템플릿 대나무숲
+                </h4>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">상처 없는 100% 긍정 응원 메시지만 공유됩니다</p>
+              </div>
+              <button onclick="openRollingModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition active:scale-95">
+                <i class="fa-solid fa-paper-plane mr-1"></i> 응원 쓰기
+              </button>
+            </div>
+
+            <!-- Rolling Papers Stream Container -->
+            <div id="bambooFeed" class="space-y-2.5">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Club MBTI Test Subview -->
+        <div id="subViewClub" class="space-y-4 hidden">
+          <div id="clubQuizStartCard" class="bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center space-y-3 shadow-sm">
+            <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/60 rounded-2xl flex items-center justify-center text-3xl mx-auto border border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400">
+              🧩
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">나에게 딱 맞는 동아리 찾기</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-300">6개의 쉬운 질문으로 나의 성향에 어울리는 최적의 동아리를 추천받으세요!</p>
+            <button onclick="startClubQuiz()" class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-xs rounded-xl shadow-lg active:scale-95 transition">
+              성향 테스트 시작하기 (+15 XP)
+            </button>
+          </div>
+
+          <!-- Active Quiz Container -->
+          <div id="clubQuizActiveCard" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4 hidden shadow-sm">
+            <div class="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-2">
+              <span>동아리 성향 퀴즈</span>
+              <span id="quizStepText" class="font-bold text-indigo-600 dark:text-indigo-400">Q 1 / 6</span>
+            </div>
+
+            <h4 id="quizQuestionText" class="text-sm font-bold text-slate-900 dark:text-white py-1">
+              방과후 자유시간이 생겼을 때 나의 행동은?
+            </h4>
+
+            <div id="quizOptionButtons" class="space-y-2">
+              <!-- JS generated -->
+            </div>
+          </div>
+
+          <!-- Quiz Result Display -->
+          <div id="clubQuizResultCard" class="bg-gradient-to-br from-indigo-100 dark:from-indigo-900/80 to-slate-100 dark:to-slate-900 border border-indigo-300 dark:border-indigo-500/40 rounded-2xl p-5 text-center space-y-4 hidden shadow-md">
+            <div class="inline-block bg-indigo-200 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-bold border border-indigo-300 dark:border-indigo-800">
+              분석 완료!
+            </div>
+            <div class="text-4xl" id="clubResultEmoji">🤖</div>
+            <h3 id="clubResultTitle" class="text-lg font-extrabold text-slate-900 dark:text-white">창의로봇 AI 연구반</h3>
+            <p id="clubResultDesc" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              논리적이고 사색적인 당신! 새로운 프로그래밍과 알고리즘을 탐구하는 동아리가 잘 어울립니다.
+            </p>
+            <button onclick="startClubQuiz()" class="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition shadow-sm">
+              다시 테스트하기
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 absolute bottom-0 left-0 right-0 h-16 px-2 flex justify-around items-center z-30 transition-colors">
+      <button onclick="switchMainTab('home')" id="navBtnHome" class="flex flex-col items-center justify-center w-16 h-full text-indigo-600 dark:text-indigo-400 transition">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[10px] font-bold mt-1">홈</span>
+      </button>
+      <button onclick="switchMainTab('lunch')" id="navBtnLunch" class="flex flex-col items-center justify-center w-16 h-full text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+        <i class="fa-solid fa-utensils text-base"></i>
+        <span class="text-[10px] font-bold mt-1">급식/시간표</span>
+      </button>
+      <button onclick="switchMainTab('cleaning')" id="navBtnCleaning" class="flex flex-col items-center justify-center w-16 h-full text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+        <i class="fa-solid fa-broom text-base"></i>
+        <span class="text-[10px] font-bold mt-1">청소/분실물</span>
+      </button>
+      <button onclick="switchMainTab('community')" id="navBtnCommunity" class="flex flex-col items-center justify-center w-16 h-full text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+        <i class="fa-solid fa-comments text-base"></i>
+        <span class="text-[10px] font-bold mt-1">소통/동아리</span>
+      </button>
+    </nav>
+
+    <!-- MODAL 1: User Profile Settings Modal -->
+    <div id="modalProfile" class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar transition-colors">
+        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">내 정보 설정 & 학급 대항전 반영</h3>
+          <button onclick="closeModal('modalProfile')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
+
+        <!-- Avatar Live Preview Box -->
+        <div class="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex items-center space-x-4">
+          <div id="modalUserAvatarPreview" class="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center font-bold text-3xl text-white border-2 border-indigo-400 shadow-md transition-all duration-300">
+            🎒
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">현재 프로필 캐릭터</div>
+            <div class="text-sm font-bold text-slate-900 dark:text-white mt-0.5" id="previewAvatarName">김모험 님</div>
+            <div id="modalPreviewTitle" class="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/90 border border-indigo-300 dark:border-indigo-700/80 px-2 py-0.5 rounded-full inline-block mt-1">🌱 신입 모험가</div>
+            <div class="text-xs font-black text-amber-500 dark:text-amber-400 mt-1 flex items-center gap-1">
+              <i class="fa-solid fa-coins"></i> 보유 XP: <span id="modalProfileXp">45</span> XP
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">이름</label>
+            <input type="text" id="inputProfileName" placeholder="예: 김모험" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">소속 학번 (학년/반 변경 시 대항전에 즉시 반영)</label>
+            <input type="text" id="inputProfileStudentId" placeholder="예: 2학년 3반 15번" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+            <span class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 block">💡 학년과 반 번호를 적으면 주간 반 대항전 시스템에 자동 업데이트됩니다!</span>
+          </div>
+
+          <!-- XP Avatar Shop & Customizer -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-xs font-extrabold text-slate-900 dark:text-white">🎨 XP 캐릭터 꾸미기 상점</label>
+              <span class="text-[10px] text-indigo-600 dark:text-indigo-400">XP로 구매 및 착용</span>
+            </div>
+
+            <!-- Shop Category Sub-Tabs -->
+            <div class="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700/80 mb-2">
+              <button id="shopTabEmoji" onclick="switchAvatarShopTab('emoji')" class="flex-1 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 text-white transition">이모지</button>
+              <button id="shopTabFrame" onclick="switchAvatarShopTab('frame')" class="flex-1 py-1 text-[11px] font-bold rounded-lg text-slate-600 dark:text-slate-400 transition">아우라</button>
+              <button id="shopTabBg" onclick="switchAvatarShopTab('bg')" class="flex-1 py-1 text-[11px] font-bold rounded-lg text-slate-600 dark:text-slate-400 transition">배경색</button>
+              <button id="shopTabTitle" onclick="switchAvatarShopTab('title')" class="flex-1 py-1 text-[11px] font-bold rounded-lg text-slate-600 dark:text-slate-400 transition">칭호</button>
+            </div>
+
+            <!-- Shop Grid -->
+            <div id="avatarShopGrid" class="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto p-1 bg-slate-100 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+
+        <button onclick="saveUserProfile()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition">
+          저장하기 & 시스템 반영
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL 2: Class Leaderboard Modal -->
+    <div id="modalLeaderboard" class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl transition-colors">
+        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5" id="leaderboardTitle">
+            <i class="fa-solid fa-trophy text-amber-500 dark:text-amber-400"></i> <span id="leaderboardGradeText">1학년</span> 학급 대항전 순위
+          </h3>
+          <button onclick="closeModal('modalLeaderboard')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
+
+        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between bg-indigo-50 dark:bg-indigo-950/50 p-2 rounded-xl border border-indigo-200 dark:border-indigo-800">
+          <span>내 소속 학학/반: <strong id="leaderboardMyClassInfo" class="text-indigo-600 dark:text-indigo-400">1학년 2반</strong></span>
+          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">실시간 연동중</span>
+        </div>
+
+        <div class="space-y-2" id="leaderboardList">
+          <!-- JS Rendered Dynamic Rankings -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: Lunch Review Auth Modal -->
+    <div id="modalLunchReview" class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl transition-colors">
+        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">오늘의 급식 평가 & 인증</h3>
+          <button onclick="closeModal('modalLunchReview')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">별점 평가</label>
+            <div class="flex space-x-2 text-xl text-amber-400 justify-center py-1" id="starRatingSelector">
+              <i class="fa-solid fa-star cursor-pointer" onclick="setLunchRating(1)"></i>
+              <i class="fa-solid fa-star cursor-pointer" onclick="setLunchRating(2)"></i>
+              <i class="fa-solid fa-star cursor-pointer" onclick="setLunchRating(3)"></i>
+              <i class="fa-solid fa-star cursor-pointer" onclick="setLunchRating(4)"></i>
+              <i class="fa-solid fa-star cursor-pointer" onclick="setLunchRating(5)"></i>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">인증 사진 등록 (시뮬레이션)</label>
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer bg-slate-50 dark:bg-slate-800/50" onclick="triggerLunchPhotoSim()">
+              <div class="text-2xl mb-1 text-slate-400"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+              <div id="lunchPhotoSimText" class="text-xs text-slate-600 dark:text-slate-300 font-medium">사진 선택하기 (완료)</div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="submitLunchReview()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition">
+          리뷰 등록 (+10 XP)
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL 4: Lost Item Report Modal -->
+    <div id="modalLostReport" class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl transition-colors">
+        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">습득 분실물 제보 등록</h3>
+          <button onclick="closeModal('modalLostReport')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">물건 이름</label>
+            <input type="text" id="inputLostTitle" placeholder="예: 파란색 에어팟 케이스" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">습득 장소 찍기</label>
+            <select id="selectLostLocation" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <option value="2층 홈베이스">2층 홈베이스</option>
+              <option value="중앙 계단">중앙 계단</option>
+              <option value="체육관 입구">체육관 입구</option>
+              <option value="급식실">급식실</option>
+              <option value="도서관">도서관</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">상세 설명</label>
+            <textarea id="inputLostDesc" rows="2" placeholder="주인을 찾기 위한 특징을 적어주세요." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none resize-none"></textarea>
+          </div>
+        </div>
+
+        <button onclick="submitLostReport()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition">
+          제보 등록 완료 (+30 XP)
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL 5: Rolling Paper Post Modal -->
+    <div id="modalRolling" class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl transition-colors">
+        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-tree text-emerald-500 dark:text-emerald-400"></i> 대나무숲 익명 글 쓰기 🎋
+          </h3>
+          <button onclick="closeModal('modalRolling')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">카테고리 태그 선택</label>
+            <select id="selectRollingTag" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none">
+              <option value="💚 응원 & 격려">💚 응원 & 격려</option>
+              <option value="🤫 익명 비밀">🤫 익명 비밀</option>
+              <option value="💬 일상 & 잡담">💬 일상 & 잡담</option>
+              <option value="💡 학급 건의">💡 학급 건의</option>
+              <option value="🎉 고백 & 감사">🎉 고백 & 감사</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">익명 내용 작성</label>
+            <textarea id="inputRollingCustom" rows="4" placeholder="친구들에게 자유롭게 전하고 싶은 이야기를 써보세요! (클린 필터링 적용)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none resize-none leading-relaxed"></textarea>
+          </div>
+        </div>
+
+        <button onclick="submitRollingPaper()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition">
+          익명으로 올리기 (+10 XP)
+        </button>
+      </div>
+    </div>
+
+    <!-- GLOBAL TOAST MESSAGE NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full max-w-xs space-y-2"></div>
+
+  </div>
+
+  <script>
+    const DEFAULT_USER = {
+      name: '김모험',
+      studentId: '1학년 2반 15번',
+      grade: '1학년',
+      classNum: '2반',
+      xp: 45,
+      level: 1,
+      badges: ['gourmet', 'cleaner'],
+      completedQuests: [],
+      moodVoted: false,
+      clubResult: null,
+      avatar: '🎒',
+      avatarFrame: 'border-indigo-400',
+      avatarBg: 'from-indigo-500 to-pink-500',
+      title: '🌱 신입 모험가',
+      unlockedAvatars: ['🎒'],
+      unlockedFrames: ['border-indigo-400'],
+      unlockedBgs: ['from-indigo-500 to-pink-500'],
+      unlockedTitles: ['🌱 신입 모험가']
+    };
+
+    let user = JSON.parse(localStorage.getItem('school_partner_user')) || DEFAULT_USER;
+    if (!user.unlockedAvatars) user.unlockedAvatars = ['🎒'];
+    if (!user.unlockedFrames) user.unlockedFrames = ['border-indigo-400'];
+    if (!user.unlockedBgs) user.unlockedBgs = ['from-indigo-500 to-pink-500'];
+    if (!user.unlockedTitles) user.unlockedTitles = ['🌱 신입 모험가'];
+    if (!user.avatar) user.avatar = '🎒';
+    if (!user.avatarFrame) user.avatarFrame = 'border-indigo-400';
+    if (!user.avatarBg) user.avatarBg = 'from-indigo-500 to-pink-500';
+    if (!user.title) user.title = '🌱 신입 모험가';
+
+    // Helper to parse Grade and Class from studentId text
+    function parseGradeAndClass(studentIdStr) {
+      let grade = '1학년';
+      let classNum = '2반';
+
+      if (!studentIdStr) return { grade, classNum };
+
+      const gradeMatch = studentIdStr.match(/(\d+)\s*학년/);
+      const classMatch = studentIdStr.match(/(\d+)\s*반/);
+
+      if (gradeMatch && gradeMatch[1]) {
+        grade = `${gradeMatch[1]}학년`;
+      } else {
+        const altGradeMatch = studentIdStr.match(/^(\d+)-/);
+        if (altGradeMatch && altGradeMatch[1]) grade = `${altGradeMatch[1]}학년`;
+      }
+
+      if (classMatch && classMatch[1]) {
+        classNum = `${classMatch[1]}반`;
+      } else {
+        const altClassMatch = studentIdStr.match(/^\d+-(\d+)/);
+        if (altClassMatch && altClassMatch[1]) classNum = `${altClassMatch[1]}반`;
+      }
+
+      return { grade, classNum };
+    }
+
+    const parsedInfo = parseGradeAndClass(user.studentId);
+    user.grade = parsedInfo.grade;
+    user.classNum = parsedInfo.classNum;
+
+    const dailyQuests = [
+      { id: 'q1', icon: '🎯', title: '오늘의 청소구역 룰렛 돌리기', xp: 20, view: 'cleaning' },
+      { id: 'q2', icon: '☀️', title: '학급 기분 날씨 투표 참여하기', xp: 10, view: 'community' },
+      { id: 'q3', icon: '🔍', title: '분실물 제보 or 확인하기', xp: 15, view: 'cleaning' }
+    ];
+
+    let swipeCardsData = [
+      { tag: '칭찬 카드', title: '오늘 시험 치느라 고생한 옆자리 친한 친구에게', desc: '따뜻한 응원의 한마디를 보냅니다! 수고했어!' },
+      { tag: '학급 건의', title: '이번 주 금요일 학급 회의 때', desc: '보드게임 시간을 15분 늘리는 것에 찬성하나요?' },
+      { tag: '지킴이 미션', title: '복도에서 우측통행 잘 지키기 챌린지', desc: '오늘 복도 통행 예절을 잘 실천하셨나요?' }
+    ];
+
+    const weeklyTimetable = [
+      { period: 1, mon: '국어', tue: '수학', wed: '영어', thu: '과학', fri: '사회' },
+      { period: 2, mon: '수학', tue: '영어', wed: '국어', thu: '체육', fri: '음악' },
+      { period: 3, mon: '영어', tue: '과학', wed: '수학', thu: '역사', fri: '미술' },
+      { period: 4, mon: '과학', tue: '사회', wed: '체육', thu: '국어', fri: '기술' },
+      { period: 5, mon: '체육', tue: '국어', wed: '동아리', thu: '영어', fri: '도덕' },
+      { period: 6, mon: '사회', tue: '음악', wed: '자율', thu: '수학', fri: '정보' }
+    ];
+
+    let lostItems = JSON.parse(localStorage.getItem('school_partner_lost')) || [
+      { id: 1, title: '파란색 에어팟 케이스', location: '2층 홈베이스', finder: '이익명', status: '습득', time: '10분 전' },
+      { id: 2, title: '검은색 삼다수 텀블러', location: '체육관 입구', finder: '박보안', status: '습득', time: '1시간 전' }
+    ];
+
+    let rollingPapers = JSON.parse(localStorage.getItem('school_partner_rolling')) || [
+      { id: 1, tag: '💚 응원 & 격려', custom: '오늘 수학 시험 보느라 모두 너무 수고했어! 결과에 너무 연연해하지 말자 🔥', likes: 12, time: '10분 전', comments: [{ id: 101, text: '다들 진짜 수고 많았어!! 👍', time: '8분 전' }] },
+      { id: 2, tag: '🎉 고백 & 감사', custom: '오늘 급식실에서 수저 챙겨준 2분단 친구 고마워~! 덕분에 편하게 먹었다 😊', likes: 8, time: '30분 전', comments: [] },
+      { id: 3, tag: '💬 일상 & 잡담', custom: '다음 주 체육대회 종목 뭐 나갈지 고민인데 추천해 줄 사람 있나요?', likes: 5, time: '1시간 전', comments: [] }
+    ];
+
+    const AVATAR_SHOP_ITEMS = {
+      emoji: [
+        { id: '🎒', name: '가방', price: 0 },
+        { id: '🐱', name: '냥이', price: 30 },
+        { id: '🦊', name: '여우', price: 50 },
+        { id: '🦄', name: '유니콘', price: 80 },
+        { id: '🤖', name: '로봇', price: 100 },
+        { id: '👑', name: '왕관', price: 150 },
+        { id: '🐲', name: '드래곤', price: 200 },
+        { id: '🥷', name: '닌자', price: 250 },
+        { id: '👾', name: '외계인', price: 300 }
+      ],
+      frame: [
+        { id: 'border-indigo-400', name: '인디고', price: 0, preview: 'border-2 border-indigo-400' },
+        { id: 'border-emerald-400 glow-emerald', name: '에메랄드', price: 30, preview: 'border-2 border-emerald-400 glow-emerald' },
+        { id: 'border-amber-400 glow-amber', name: '황금빛', price: 50, preview: 'border-2 border-amber-400 glow-amber' },
+        { id: 'border-pink-500 glow-pink', name: '네온 핑크', price: 80, preview: 'border-2 border-pink-500 shadow-[0_0_12px_rgba(236,72,153,0.8)]' },
+        { id: 'border-purple-400 shadow-[0_0_18px_rgba(168,85,247,0.9)]', name: '무지개', price: 120, preview: 'border-2 border-purple-400 shadow-[0_0_18px_rgba(168,85,247,0.9)]' },
+        { id: 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.9)]', name: '사이버', price: 180, preview: 'border-2 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.9)]' }
+      ],
+      bg: [
+        { id: 'from-indigo-500 to-pink-500', name: '인디고 핑크', price: 0, preview: 'bg-gradient-to-tr from-indigo-500 to-pink-500' },
+        { id: 'from-emerald-500 to-teal-700', name: '에메랄드', price: 30, preview: 'bg-gradient-to-tr from-emerald-500 to-teal-700' },
+        { id: 'from-amber-500 to-rose-500', name: '황금 노을', price: 50, preview: 'bg-gradient-to-tr from-amber-500 to-rose-500' },
+        { id: 'from-purple-600 to-indigo-900', name: '네온 바이올렛', price: 70, preview: 'bg-gradient-to-tr from-purple-600 to-indigo-900' },
+        { id: 'from-blue-600 via-purple-600 to-pink-500', name: '갤럭시', price: 100, preview: 'bg-gradient-to-tr from-blue-600 via-purple-600 to-pink-500' },
+        { id: 'from-red-600 via-orange-500 to-amber-400', name: '용암 불꽃', price: 150, preview: 'bg-gradient-to-tr from-red-600 via-orange-500 to-amber-400' }
+      ],
+      title: [
+        { id: '🌱 신입 모험가', name: '🌱 신입 모험가', price: 0 },
+        { id: '🧹 청소 마스터', name: '🧹 청소 마스터', price: 40 },
+        { id: '🍱 전설의 미식가', name: '🍱 전설의 미식가', price: 60 },
+        { id: '🔍 분실물 명탐정', name: '🔍 분실물 명탐정', price: 80 },
+        { id: '👑 학급 핵인싸', name: '👑 학급 핵인싸', price: 120 },
+        { id: '⚡ 퀘스트 종결자', name: '⚡ 퀘스트 종결자', price: 200 }
+      ]
+    };
+
+    let activeShopTab = 'emoji';
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeModeText');
+
+      if (html.classList.contains('dark')) {
+        // Switch to White / Day Mode
+        html.classList.remove('dark');
+        themeIcon.className = 'fa-solid font-bold fa-sun text-amber-500';
+        themeText.textContent = '낮';
+        showToast('☀️ 낮 (화이트 모드)로 전환되었습니다.');
+      } else {
+        // Switch to Night / Dark Mode
+        html.classList.add('dark');
+        themeIcon.className = 'fa-solid font-bold fa-moon text-indigo-400';
+        themeText.textContent = '밤';
+        showToast('🌙 밤 (다크 모드)로 전환되었습니다.');
+      }
+    }
+
+    function saveUserData() {
+      localStorage.setItem('school_partner_user', JSON.stringify(user));
+      updateUserUI();
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'bg-slate-900/90 dark:bg-slate-800/95 text-white border border-indigo-500/50 text-xs font-bold px-4 py-2.5 rounded-xl shadow-xl backdrop-blur-md flex items-center justify-between transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto';
+      toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="ml-2 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+      }
+    }
+
+    function addXP(amount, reason) {
+      user.xp += amount;
+      const newLevel = Math.floor(user.xp / 100) + 1;
+      if (newLevel > user.level) {
+        user.level = newLevel;
+        triggerConfetti();
+        showToast(`🎉 레벨 업! Lv.${user.level} 달성을 축하합니다!`);
+      } else {
+        showToast(`+${amount} XP 획득! (${reason})`);
+      }
+      saveUserData();
+    }
+
+    function openProfileModal() {
+      document.getElementById('inputProfileName').value = user.name;
+      document.getElementById('inputProfileStudentId').value = user.studentId;
+      renderAvatarShop();
+      document.getElementById('modalProfile').classList.remove('hidden');
+    }
+
+    function switchMainTab(tab) {
+      ['home', 'lunch', 'cleaning', 'community'].forEach(t => {
+        const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const btn = document.getElementById(`navBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (view && btn) {
+          if (t === tab) {
+            view.classList.remove('hidden');
+            btn.className = 'flex flex-col items-center justify-center w-16 h-full text-indigo-600 dark:text-indigo-400 transition';
+          } else {
+            view.classList.add('hidden');
+            btn.className = 'flex flex-col items-center justify-center w-16 h-full text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition';
+          }
+        }
+      });
+    }
+
+    function switchLunchSubTab(sub) {
+      const isLunch = sub === 'lunch';
+      document.getElementById('subViewLunch').classList.toggle('hidden', !isLunch);
+      document.getElementById('subViewTime').classList.toggle('hidden', isLunch);
+
+      document.getElementById('tabBtnLunch').className = isLunch ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+      document.getElementById('tabBtnTime').className = !isLunch ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+    }
+
+    function switchCleanSubTab(sub) {
+      const isRoulette = sub === 'roulette';
+      document.getElementById('subViewRoulette').classList.toggle('hidden', !isRoulette);
+      document.getElementById('subViewLost').classList.toggle('hidden', isRoulette);
+
+      document.getElementById('tabBtnRoulette').className = isRoulette ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+      document.getElementById('tabBtnLost').className = !isRoulette ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+    }
+
+    function switchCommSubTab(sub) {
+      const isBamboo = sub === 'bamboo';
+      document.getElementById('subViewBamboo').classList.toggle('hidden', !isBamboo);
+      document.getElementById('subViewClub').classList.toggle('hidden', isBamboo);
+
+      document.getElementById('tabBtnBamboo').className = isBamboo ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+      document.getElementById('tabBtnClub').className = !isBamboo ? 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+    }
+
+    function updateUserUI() {
+      document.getElementById('userName').textContent = user.name;
+      document.getElementById('userStudentInfo').textContent = user.studentId;
+      document.getElementById('userLevelBadge').textContent = `Lv.${user.level}`;
+
+      const titleBadge = document.getElementById('userTitleBadge');
+      if (titleBadge) titleBadge.textContent = user.title || '🌱 신입 모험가';
+
+      const mainAvatar = document.getElementById('userAvatar');
+      if (mainAvatar) {
+        mainAvatar.textContent = user.avatar;
+        mainAvatar.className = `w-10 h-10 rounded-full bg-gradient-to-tr ${user.avatarBg} flex items-center justify-center font-bold text-lg text-white border-2 ${user.avatarFrame} transition-all duration-300`;
+      }
+
+      const modalAvatarPreview = document.getElementById('modalUserAvatarPreview');
+      if (modalAvatarPreview) {
+        modalAvatarPreview.textContent = user.avatar;
+        modalAvatarPreview.className = `w-16 h-16 rounded-full bg-gradient-to-tr ${user.avatarBg} flex items-center justify-center font-bold text-3xl text-white border-2 ${user.avatarFrame} transition-all duration-300`;
+      }
+
+      const modalTitlePreview = document.getElementById('modalPreviewTitle');
+      if (modalTitlePreview) modalTitlePreview.textContent = user.title || '🌱 신입 모험가';
+
+      const previewAvatarName = document.getElementById('previewAvatarName');
+      if (previewAvatarName) previewAvatarName.textContent = `${user.name} 님`;
+
+      const modalXp = document.getElementById('modalProfileXp');
+      if (modalXp) modalXp.textContent = user.xp;
+
+      const timetableTitle = document.getElementById('timetableTitleText');
+      if (timetableTitle) timetableTitle.textContent = `${user.grade} ${user.classNum} 주간 시간표`;
+
+      const currentLevelXP = user.xp % 100;
+      document.getElementById('xpProgressBar').style.width = `${currentLevelXP}%`;
+    }
+
+    function switchAvatarShopTab(tab) {
+      activeShopTab = tab;
+      ['emoji', 'frame', 'bg', 'title'].forEach(t => {
+        const btn = document.getElementById(`shopTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (btn) {
+          if (t === tab) {
+            btn.className = 'flex-1 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 text-white transition';
+          } else {
+            btn.className = 'flex-1 py-1 text-[11px] font-bold rounded-lg text-slate-600 dark:text-slate-400 transition hover:text-slate-900 dark:hover:text-white';
+          }
+        }
+      });
+      renderAvatarShop();
+    }
+
+    function renderAvatarShop() {
+      const container = document.getElementById('avatarShopGrid');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const items = AVATAR_SHOP_ITEMS[activeShopTab] || [];
+
+      items.forEach(item => {
+        let isUnlocked = false;
+        let isEquipped = false;
+
+        if (activeShopTab === 'emoji') {
+          isUnlocked = user.unlockedAvatars.includes(item.id);
+          isEquipped = user.avatar === item.id;
+        } else if (activeShopTab === 'frame') {
+          isUnlocked = user.unlockedFrames.includes(item.id);
+          isEquipped = user.avatarFrame === item.id;
+        } else if (activeShopTab === 'bg') {
+          isUnlocked = user.unlockedBgs.includes(item.id);
+          isEquipped = user.avatarBg === item.id;
+        } else if (activeShopTab === 'title') {
+          isUnlocked = user.unlockedTitles.includes(item.id);
+          isEquipped = user.title === item.id;
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-2 rounded-xl border text-center flex flex-col justify-between items-center transition cursor-pointer ${isEquipped ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-400 ring-2 ring-indigo-500/50' : isUnlocked ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-400' : 'bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/80 opacity-85'}`;
+
+        let displayContent = '';
+        if (activeShopTab === 'emoji') {
+          displayContent = `<div class="text-2xl">${item.id}</div>`;
+        } else if (activeShopTab === 'frame') {
+          displayContent = `<div class="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-700 ${item.preview}"></div>`;
+        } else if (activeShopTab === 'bg') {
+          displayContent = `<div class="w-7 h-7 rounded-full ${item.preview}"></div>`;
+        } else if (activeShopTab === 'title') {
+          displayContent = `<div class="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/30 line-clamp-1">${item.name}</div>`;
+        }
+
+        card.innerHTML = `
+          ${displayContent}
+          <div class="text-[10px] font-bold text-slate-800 dark:text-white mt-1 leading-tight line-clamp-1">${item.name}</div>
+          <div class="mt-1 text-[9px] font-extrabold">
+            ${isEquipped ? '<span class="text-emerald-600 dark:text-emerald-400">착용 중</span>' : isUnlocked ? '<span class="text-indigo-600 dark:text-indigo-300">보유함</span>' : `<span class="text-amber-500 dark:text-amber-400">${item.price} XP</span>`}
+          </div>
+        `;
+
+        card.onclick = () => handleAvatarItemClick(activeShopTab, item, isUnlocked, isEquipped);
+        container.appendChild(card);
+      });
+    }
+
+    function handleAvatarItemClick(category, item, isUnlocked, isEquipped) {
+      if (isEquipped) return;
+
+      if (isUnlocked) {
+        equipAvatarItem(category, item.id);
+        showToast(`'${item.name}' 아이템을 착용했습니다! ✨`);
+      } else {
+        if (user.xp >= item.price) {
+          user.xp -= item.price;
+          if (category === 'emoji') user.unlockedAvatars.push(item.id);
+          if (category === 'frame') user.unlockedFrames.push(item.id);
+          if (category === 'bg') user.unlockedBgs.push(item.id);
+          if (category === 'title') user.unlockedTitles.push(item.id);
+
+          equipAvatarItem(category, item.id);
+          triggerConfetti();
+          showToast(`🎉 '${item.name}' 아이템을 구매하여 착용했습니다!`);
+        } else {
+          showToast(`XP가 부족합니다! (${item.price - user.xp} XP 필요) 퀘스트를 완료해보세요! 💪`);
+        }
+      }
+    }
+
+    function equipAvatarItem(category, id) {
+      if (category === 'emoji') user.avatar = id;
+      if (category === 'frame') user.avatarFrame = id;
+      if (category === 'bg') user.avatarBg = id;
+      if (category === 'title') user.title = id;
+
+      saveUserData();
+      renderAvatarShop();
+    }
+
+    function saveUserProfile() {
+      user.name = document.getElementById('inputProfileName').value || '김모험';
+      user.studentId = document.getElementById('inputProfileStudentId').value || '1학년 2반 15번';
+
+      // Parse and reflect Grade / Class
+      const parsed = parseGradeAndClass(user.studentId);
+      user.grade = parsed.grade;
+      user.classNum = parsed.classNum;
+
+      saveUserData();
+      closeModal('modalProfile');
+      showToast(`프로필 및 대항전 시스템 정보가 [${user.grade} ${user.classNum}]으로 수정되었습니다! 🏆`);
+    }
+
+    function openLeaderboardModal() {
+      const list = document.getElementById('leaderboardList');
+      const gradeText = document.getElementById('leaderboardGradeText');
+      const myClassText = document.getElementById('leaderboardMyClassInfo');
+
+      if (gradeText) gradeText.textContent = user.grade;
+      if (myClassText) myClassText.textContent = `${user.grade} ${user.classNum}`;
+
+      // Dynamically generate class leaderboard entries based on user grade & class
+      const userClassNumVal = parseInt(user.classNum) || 2;
+      const classScores = [];
+
+      for (let i = 1; i <= 4; i++) {
+        const cName = `${user.grade} ${i}반`;
+        let points = 1000 + i * 110;
+        if (i === userClassNumVal) {
+          points = Math.max(points, 1350 + user.xp * 2);
+        }
+        classScores.push({
+          name: i === userClassNumVal ? `${cName} (우리반)` : cName,
+          points: points,
+          isUserClass: i === userClassNumVal
+        });
+      }
+
+      // Sort by points descending
+      classScores.sort((a, b) => b.points - a.points);
+
+      list.innerHTML = classScores.map((c, index) => `
+        <div class="flex items-center justify-between p-2.5 rounded-xl border ${c.isUserClass ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-500/60 ring-1 ring-indigo-400' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50'} transition-all">
+          <div class="flex items-center space-x-3">
+            <span class="w-6 font-bold text-xs ${index === 0 ? 'text-amber-500 dark:text-amber-400 font-extrabold' : 'text-slate-500 dark:text-slate-400'}">${index + 1}위</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white">${c.name}</span>
+          </div>
+          <span class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">${c.points} XP</span>
+        </div>
+      `).join('');
+
+      document.getElementById('modalLeaderboard').classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function renderQuests() {
+      const container = document.getElementById('dailyQuestList');
+      container.innerHTML = '';
+
+      let completedCount = user.completedQuests.length;
+      document.getElementById('questProgressText').textContent = `${completedCount} / ${dailyQuests.length} 완료`;
+
+      dailyQuests.forEach(q => {
+        const isDone = user.completedQuests.includes(q.id);
+        const card = document.createElement('div');
+        card.className = `flex items-center justify-between p-3 rounded-xl border ${isDone ? 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-slate-50 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 shadow-sm'} transition`;
+        card.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <span class="text-lg">${q.icon}</span>
+            <div>
+              <div class="text-xs font-bold ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}">${q.title}</div>
+              <div class="text-[10px] text-amber-500 dark:text-amber-400 font-semibold">+${q.xp} XP</div>
+            </div>
+          </div>
+          <button onclick="handleQuestAction('${q.id}', '${q.view}')" ${isDone ? 'disabled' : ''} class="px-2.5 py-1 text-[11px] font-bold rounded-lg ${isDone ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-400' : 'bg-indigo-600 hover:bg-indigo-500 text-white'} transition">
+            ${isDone ? '완료' : '바로가기'}
+          </button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function handleQuestAction(questId, view) {
+      switchMainTab(view);
+    }
+
+    function completeQuest(questId) {
+      if (!user.completedQuests.includes(questId)) {
+        user.completedQuests.push(questId);
+        const quest = dailyQuests.find(q => q.id === questId);
+        if (quest) {
+          addXP(quest.xp, quest.title);
+        }
+        renderQuests();
+      }
+    }
+
+    function startCountdownTimer() {
+      let seconds = 760;
+      setInterval(() => {
+        if (seconds > 0) seconds--;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        document.getElementById('periodCountdown').textContent = `쉬는 시간까지 ${m}분 ${s < 10 ? '0' : ''}${s}초`;
+      }, 1000);
+    }
+
+    function renderSwipeCards() {
+      const deck = document.getElementById('swipeDeck');
+      deck.innerHTML = '';
+
+      if (swipeCardsData.length === 0) {
+        deck.innerHTML = `
+          <div class="text-center text-slate-500 dark:text-slate-400 text-xs py-10">
+            🎉 오늘의 스와이프 카드를 모두 완료했습니다!
+          </div>
+        `;
+        return;
+      }
+
+      const topCardData = swipeCardsData[0];
+      const card = document.createElement('div');
+      card.id = 'activeSwipeCard';
+      card.className = 'swipe-card absolute inset-0 bg-white dark:bg-gradient-to-b dark:from-slate-800 dark:to-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col justify-between shadow-xl';
+      
+      card.innerHTML = `
+        <div>
+          <span class="text-[10px] font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/80 px-2.5 py-0.5 rounded-full border border-pink-200 dark:border-pink-800">
+            ${topCardData.tag}
+          </span>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white mt-2">${topCardData.title}</h3>
+          <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">${topCardData.desc}</p>
+        </div>
+        <div class="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-200 dark:border-slate-700/60 pt-2">
+          <span>← 반대 / 거절</span>
+          <span>찬성 / 응원 →</span>
+        </div>
+      `;
+
+      deck.appendChild(card);
+    }
+
+    function handleSwipe(direction) {
+      const card = document.getElementById('activeSwipeCard');
+      if (!card) return;
+
+      const translateX = direction === 'right' ? 300 : -300;
+      card.style.transform = `translateX(${translateX}px) rotate(${direction === 'right' ? 20 : -20}deg)`;
+      card.style.opacity = '0';
+
+      setTimeout(() => {
+        swipeCardsData.shift();
+        addXP(5, '스와이프 참여');
+        renderSwipeCards();
+      }, 200);
+    }
+
+    let currentRating = 5;
+
+    function renderLunchMenu() {
+      const items = ['차돌된장찌개 🍲', '치킨너겟 🍗', '깍두기 🥢', '멜론 🍈', '현미밥 🍚'];
+      const container = document.getElementById('lunchDetailedList');
+      container.innerHTML = items.map(i => `
+        <div class="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
+          <span>${i}</span>
+          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">인기</span>
+        </div>
+      `).join('');
+    }
+
+    function openLunchReviewModal() {
+      document.getElementById('modalLunchReview').classList.remove('hidden');
+    }
+
+    function setLunchRating(stars) {
+      currentRating = stars;
+      const icons = document.querySelectorAll('#starRatingSelector i');
+      icons.forEach((icon, idx) => {
+        if (idx < stars) {
+          icon.className = 'fa-solid fa-star cursor-pointer text-amber-400';
+        } else {
+          icon.className = 'fa-regular fa-star cursor-pointer text-slate-400 dark:text-slate-600';
+        }
+      });
+    }
+
+    function triggerLunchPhotoSim() {
+      document.getElementById('lunchPhotoSimText').textContent = '📸 급식 사진 인증됨!';
+      document.getElementById('lunchPhotoSimText').className = 'text-xs text-emerald-600 dark:text-emerald-400 font-bold';
+    }
+
+    function submitLunchReview() {
+      closeModal('modalLunchReview');
+      if (!user.badges.includes('gourmet')) {
+        user.badges.push('gourmet');
+      }
+      addXP(10, '급식 리뷰 작성');
+      showToast('미식가 뱃지 획득 및 리뷰 등록 완료!');
+    }
+
+    function renderTimetable() {
+      const body = document.getElementById('timetableBody');
+      body.innerHTML = weeklyTimetable.map(row => `
+        <tr>
+          <td class="py-2 font-bold text-slate-400">${row.period}교시</td>
+          <td class="py-2">${row.mon}</td>
+          <td class="py-2">${row.tue}</td>
+          <td class="py-2 font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">${row.wed}</td>
+          <td class="py-2">${row.thu}</td>
+          <td class="py-2">${row.fri}</td>
+        </tr>
+      `).join('');
+    }
+
+    const rouletteSectors = ['칠판 지우기', '창문 닦기', '쓰레기 비우기', '황금티켓(면제)', '바닥 쓸기', '모둠 정리'];
+    let isSpinning = false;
+
+    function initRouletteCanvas() {
+      const canvas = document.getElementById('rouletteCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const numSectors = rouletteSectors.length;
+      const arc = (2 * Math.PI) / numSectors;
+      const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6'];
+
+      for (let i = 0; i < numSectors; i++) {
+        ctx.beginPath();
+        ctx.fillStyle = colors[i];
+        ctx.moveTo(100, 100);
+        ctx.arc(100, 100, 100, i * arc, (i + 1) * arc);
+        ctx.fill();
+
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Pretendard';
+        ctx.translate(100 + Math.cos(i * arc + arc / 2) * 60, 100 + Math.sin(i * arc + arc / 2) * 60);
+        ctx.rotate(i * arc + arc / 2 + Math.PI / 2);
+        ctx.fillText(rouletteSectors[i], -ctx.measureText(rouletteSectors[i]).width / 2, 0);
+        ctx.restore();
+      }
+    }
+
+    function spinRoulette() {
+      if (isSpinning) return;
+      isSpinning = true;
+
+      const canvas = document.getElementById('rouletteCanvas');
+      const randomRot = 1800 + Math.floor(Math.random() * 360);
+      canvas.style.transform = `rotate(${randomRot}deg)`;
+
+      setTimeout(() => {
+        isSpinning = false;
+        completeQuest('q1');
+        if (!user.badges.includes('cleaner')) {
+          user.badges.push('cleaner');
+        }
+        showToast('🎯 청소역할 당첨 완료! 수고하셨습니다!');
+      }, 4000);
+    }
+
+    function sendMVPSticker(stickerName) {
+      addXP(10, 'MVP 스티커 전송');
+      showToast(`${stickerName} 스티커를 전송했습니다!`);
+    }
+
+    function renderLostItems() {
+      const container = document.getElementById('lostItemContainer');
+      container.innerHTML = lostItems.map(item => `
+        <div class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold text-slate-900 dark:text-white">${item.title}</span>
+              <span class="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">${item.status}</span>
+            </div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+              📍 ${item.location} | 습득자: ${item.finder} (${item.time})
+            </div>
+          </div>
+          <button onclick="thankFinder('${item.finder}')" class="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-amber-600 dark:text-amber-300 font-bold text-[10px] rounded-lg transition active:scale-95">
+            🙏 감사 전하기
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function openLostReportModal() {
+      document.getElementById('modalLostReport').classList.remove('hidden');
+    }
+
+    function submitLostReport() {
+      const title = document.getElementById('inputLostTitle').value;
+      const location = document.getElementById('selectLostLocation').value;
+
+      if (!title) {
+        showToast('물건 이름을 입력해주세요!');
+        return;
+      }
+
+      lostItems.unshift({
+        id: Date.now(),
+        title,
+        location,
+        finder: user.name,
+        status: '습득',
+        time: '방금 전'
+      });
+
+      localStorage.setItem('school_partner_lost', JSON.stringify(lostItems));
+      renderLostItems();
+      closeModal('modalLostReport');
+      completeQuest('q3');
+      if (!user.badges.includes('detective')) {
+        user.badges.push('detective');
+      }
+      showToast('분실물 제보가 등록되었습니다!');
+    }
+
+    function thankFinder(finder) {
+      showToast(`${finder} 님에게 감사의 마음을 전했습니다! ❤️`);
+    }
+
+    function voteMood(type) {
+      if (user.moodVoted) {
+        showToast('이미 오늘 학급 기분 날씨 투표에 참여하셨습니다!');
+        return;
+      }
+      user.moodVoted = true;
+      user.selectedMood = type;
+      saveUserData();
+      renderMoodUI();
+      completeQuest('q2');
+      showToast('학급 기분 날씨 투표 완료! (+10 XP)');
+    }
+
+    function renderMoodUI() {
+      const badge = document.getElementById('votedMoodBadge');
+      if (!badge) return;
+
+      if (user.moodVoted) {
+        badge.classList.remove('hidden');
+        if (user.selectedMood) {
+          badge.textContent = `투표완료 (${getMoodLabel(user.selectedMood)})`;
+        }
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      const moodTypes = ['sunny', 'cloudy', 'rainy', 'lightning'];
+      moodTypes.forEach(t => {
+        const btn = document.getElementById(`btnMood${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (btn) {
+          if (user.moodVoted) {
+            if (user.selectedMood === t) {
+              btn.className = 'p-2 bg-indigo-100 dark:bg-indigo-900/80 border-2 border-amber-500 rounded-xl flex flex-col items-center transition cursor-default shadow-md';
+            } else {
+              btn.className = 'p-2 bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center opacity-40 cursor-not-allowed';
+            }
+          } else {
+            btn.className = 'p-2 bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center transition active:scale-95 cursor-pointer shadow-sm';
+          }
+        }
+      });
+    }
+
+    function getMoodLabel(type) {
+      switch(type) {
+        case 'sunny': return '☀️ 최고예요';
+        case 'cloudy': return '⛅ 평범해요';
+        case 'rainy': return '🌧️ 피곤해요';
+        case 'lightning': return '⚡ 힘들어요';
+        default: return '투표완료';
+      }
+    }
+
+    function renderRollingPapers() {
+      const container = document.getElementById('bambooFeed');
+      if (!container) return;
+
+      container.innerHTML = rollingPapers.map(r => {
+        const comments = r.comments || [];
+        const commentsListHtml = comments.map(c => `
+          <div class="bg-slate-100 dark:bg-slate-900/70 rounded-lg p-2 text-[11px] border border-slate-200 dark:border-slate-800/80 flex items-start justify-between gap-2">
+            <div class="flex-1">
+              <span class="font-bold text-indigo-600 dark:text-indigo-300 mr-1">익명:</span>
+              <span class="text-slate-800 dark:text-slate-200">${c.text}</span>
+            </div>
+            <span class="text-[9px] text-slate-400 dark:text-slate-500 shrink-0">${c.time}</span>
+          </div>
+        `).join('');
+
+        return `
+        <div class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5 space-y-2.5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-700/60">
+              ${r.tag || '💬 일상 & 잡담'}
+            </span>
+            <span class="text-[10px] text-slate-500 dark:text-slate-400">${r.time} • 익명 모험가</span>
+          </div>
+          <div class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium whitespace-pre-line">${r.custom}</div>
+          <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/50 pt-2 text-[11px]">
+            <span class="text-slate-500 dark:text-slate-400 font-semibold text-[10px]">💬 댓글 ${comments.length}개</span>
+            <button onclick="likeRollingPaper(${r.id})" class="font-bold text-rose-500 dark:text-rose-400 hover:text-rose-600 flex items-center gap-1.5 transition active:scale-95">
+              <i class="fa-solid fa-heart"></i> <span>${r.likes || 0}</span>
+            </button>
+          </div>
+
+          <div class="space-y-1.5 pt-1">
+            ${commentsListHtml ? `<div class="space-y-1 max-h-36 overflow-y-auto pr-1 no-scrollbar">${commentsListHtml}</div>` : ''}
+            <div class="flex gap-1.5 pt-1">
+              <input type="text" id="commentInput_${r.id}" placeholder="익명 댓글 쓰기..." onkeypress="if(event.key==='Enter') submitComment(${r.id})" class="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+              <button onclick="submitComment(${r.id})" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] rounded-lg transition active:scale-95 shrink-0">
+                등록
+              </button>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join('');
+    }
+
+    function submitComment(paperId) {
+      const input = document.getElementById(`commentInput_${paperId}`);
+      if (!input) return;
+      let text = input.value.trim();
+      if (!text) {
+        showToast('댓글 내용을 입력해 주세요!');
+        return;
+      }
+
+      text = filterProfanity(text);
+
+      const paper = rollingPapers.find(p => p.id === paperId);
+      if (paper) {
+        if (!paper.comments) paper.comments = [];
+        paper.comments.push({
+          id: Date.now(),
+          text: text,
+          time: '방금 전'
+        });
+
+        localStorage.setItem('school_partner_rolling', JSON.stringify(rollingPapers));
+        renderRollingPapers();
+        addXP(5, '대나무숲 익명 댓글 작성');
+        showToast('익명 댓글이 등록되었습니다! (+5 XP)');
+      }
+    }
+
+    function openRollingModal() {
+      document.getElementById('inputRollingCustom').value = '';
+      document.getElementById('modalRolling').classList.remove('hidden');
+    }
+
+    function filterProfanity(text) {
+      const badWords = ['바보', '멍청이', '나쁜', '지랄', '개새', '시발', '존나', '꺼져'];
+      let clean = text;
+      badWords.forEach(w => {
+        clean = clean.replace(new RegExp(w, 'gi'), '***');
+      });
+      return clean;
+    }
+
+    function submitRollingPaper() {
+      const tag = document.getElementById('selectRollingTag').value;
+      let custom = document.getElementById('inputRollingCustom').value.trim();
+
+      if (!custom) {
+        showToast('내용을 입력해주세요!');
+        return;
+      }
+
+      custom = filterProfanity(custom);
+
+      rollingPapers.unshift({
+        id: Date.now(),
+        tag,
+        custom,
+        likes: 0,
+        time: '방금 전'
+      });
+
+      localStorage.setItem('school_partner_rolling', JSON.stringify(rollingPapers));
+      renderRollingPapers();
+      closeModal('modalRolling');
+      if (!user.badges.includes('cheerer')) {
+        user.badges.push('cheerer');
+      }
+      addXP(10, '대나무숲 익명 글 등록');
+      showToast('익명 글이 대나무숲에 등록되었습니다! 🎋');
+    }
+
+    function likeRollingPaper(id) {
+      const paper = rollingPapers.find(p => p.id === id);
+      if (paper) {
+        paper.likes = (paper.likes || 0) + 1;
+        localStorage.setItem('school_partner_rolling', JSON.stringify(rollingPapers));
+        renderRollingPapers();
+        showToast('공감 응원을 보냈습니다! ❤️');
+      }
+    }
+
+    const clubQuestions = [
+      {
+        q: '쉬는 시간에 가장 끌리는 행동은?',
+        options: [
+          { text: '💻 패드로 알고리즘 코딩 및 웹 앱 서비스 탐구하기', type: 'tech' },
+          { text: '🎨 태블릿이나 노트에 캐릭터/웹툰 구상하기', type: 'art' },
+          { text: '⚽ 친구들과 운동장에 나가 신나게 공 차기', type: 'sports' },
+          { text: '🎧 이어폰 끼고 좋아하는 음악 감상 및 가사 쓰기', type: 'music' },
+          { text: '🔍 미스터리 추리 소설이나 과학수사 사건 분석', type: 'detective' },
+          { text: '💬 친구의 고민을 들어주고 맛있는 간식 나눠먹기', type: 'social' }
+        ]
+      },
+      {
+        q: '축제 날 우리반 부스를 만든다면 내가 맡고 싶은 역할은?',
+        options: [
+          { text: '⚙️ 부스 기획 총괄 및 스마트 예약 시스템 개발', type: 'tech' },
+          { text: '🎨 홍보 포스터 디자인 & 부스 전면 네온 인테리어', type: 'art' },
+          { text: '📣 활기찬 목소리로 손님 호객 & 액티비티 진행', type: 'sports' },
+          { text: '🎸 축제 메인 무대 오프닝 연주 및 보컬 라이브', type: 'music' },
+          { text: '🧠 방탈출 미로 및 심리 퀴즈 트릭 단서 설계', type: 'detective' },
+          { text: '☕ 따뜻한 디저트 음료 제조 & 감성 상담소 운영', type: 'social' }
+        ]
+      },
+      {
+        q: '새 학기 동아리 홍보 책자에서 눈에 들어오는 문구는?',
+        options: [
+          { text: '"상상을 현실로 만드는 미래 혁신 기술과 아이디어"', type: 'tech' },
+          { text: '"내 손으로 완성하는 시각 예술과 독창적인 스토리"', type: 'art' },
+          { text: '"열정과 에너지를 쏟아붓는 피지컬 익스트림 클럽"', type: 'sports' },
+          { text: '"세상을 울리는 비트와 아름다운 오케스트라 선율"', type: 'music' },
+          { text: '"숨겨진 진실과 오차를 밝혀내는 예리한 직관력"', type: 'detective' },
+          { text: '"지친 일상에 따뜻한 온기와 힐링을 전하는 공간"', type: 'social' }
+        ]
+      },
+      {
+        q: '팀 프로젝트가 주어졌을 때 나의 숨겨진 강점은?',
+        options: [
+          { text: '📊 논리적이고 효율적인 데이터 정리 및 버그 해결', type: 'tech' },
+          { text: '💡 감각적인 비주얼 PPT와 인포그래픽 제작 능력', type: 'art' },
+          { text: '🔥 지치지 않는 추진력으로 팀원들의 사기 끌어올리기', type: 'sports' },
+          { text: '🎶 뛰어난 표현력으로 발표 무대를 몰입시키는 감성', type: 'music' },
+          { text: '🧐 놓치기 쉬운 오차와 허점을 짚어내는 예리함', type: 'detective' },
+          { text: '🤝 갈등을 중재하고 팀 분위기를 화기애애하게 만들기', type: 'social' }
+        ]
+      },
+      {
+        q: '내가 가장 큰 성취감과 보람을 느끼는 순간은?',
+        options: [
+          { text: '🎯 복잡했던 문제나 오류 코드를 완벽히 해결했을 때', type: 'tech' },
+          { text: '✨ 정성껏 완성한 그림/웹툰이 많은 찬사를 받을 때', type: 'art' },
+          { text: '🏆 땀 흘린 노력 끝에 경기 승리와 신기록을 달성할 때', type: 'sports' },
+          { text: '🎤 나의 연주와 노래에 청중들이 호응하며 환호할 때', type: 'music' },
+          { text: '💡 숨겨진 미스터리 사건의 전말을 명쾌하게 파헤쳤을 때', type: 'detective' },
+          { text: '❤️ 내 진심 어린 조언에 친구가 미소를 되찾았을 때', type: 'social' }
+        ]
+      },
+      {
+        q: '방학 동안 꼭 도전해보고 싶은 버킷리스트는?',
+        options: [
+          { text: '🤖 나만의 AI 프로필 서비스 직접 제작해보기', type: 'tech' },
+          { text: '🖌️ 웹툰 연재 또는 일러스트 굿즈 제작해보기', type: 'art' },
+          { text: '🚴‍♂️ 국토종주 자전거 라이딩이나 등산 익스트림 스포츠', type: 'sports' },
+          { text: '🎸 자작곡 음원 만들기 또는 버스킹 공연 도전하기', type: 'music' },
+          { text: '📚 프로파일링 소설 읽기 및 과학수사 박물관 탐방', type: 'detective' },
+          { text: '🎁 친구들과 함께하는 힐링 봉사 캠프 운영하기', type: 'social' }
+        ]
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScores = { tech: 0, art: 0, sports: 0, music: 0, detective: 0, social: 0 };
+
+    function startClubQuiz() {
+      currentQuizIndex = 0;
+      quizScores = { tech: 0, art: 0, sports: 0, music: 0, detective: 0, social: 0 };
+
+      document.getElementById('clubQuizStartCard').classList.add('hidden');
+      document.getElementById('clubQuizResultCard').classList.add('hidden');
+      document.getElementById('clubQuizActiveCard').classList.remove('hidden');
+
+      renderQuizStep();
+    }
+
+    function renderQuizStep() {
+      const qData = clubQuestions[currentQuizIndex];
+      document.getElementById('quizStepText').textContent = `Q ${currentQuizIndex + 1} / ${clubQuestions.length}`;
+      document.getElementById('quizQuestionText').textContent = qData.q;
+
+      const optsContainer = document.getElementById('quizOptionButtons');
+      optsContainer.innerHTML = qData.options.map(opt => `
+        <button onclick="answerQuiz('${opt.type}')" class="w-full p-3 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 rounded-xl text-left text-xs font-bold text-slate-800 dark:text-slate-200 transition active:scale-95 leading-relaxed shadow-sm">
+          ${opt.text}
+        </button>
+      `).join('');
+    }
+
+    function answerQuiz(type) {
+      if (quizScores[type] !== undefined) {
+        quizScores[type]++;
+      }
+      currentQuizIndex++;
+
+      if (currentQuizIndex < clubQuestions.length) {
+        renderQuizStep();
+      } else {
+        showClubResult();
+      }
+    }
+
+    function showClubResult() {
+      document.getElementById('clubQuizActiveCard').classList.add('hidden');
+      document.getElementById('clubQuizResultCard').classList.remove('hidden');
+
+      let topType = 'tech';
+      let maxScore = -1;
+      Object.keys(quizScores).forEach(type => {
+        if (quizScores[type] > maxScore) {
+          maxScore = quizScores[type];
+          topType = type;
+        }
+      });
+
+      const results = {
+        tech: { title: '미래 AI & 소프트웨어 연구반 🤖', emoji: '🤖', desc: '논리적인 사고와 알고리즘 문제 해결 능력이 뛰어난 당신! 코딩과 AI 앱 개발을 주도하는 미래형 유망주입니다.' },
+        art: { title: '스트릿 아트 & 웹툰 창작부 🎨', emoji: '🎨', desc: '남다른 감각과 풍부한 상상력을 갖춘 아트 마스터! 캐릭터 디자인과 스토리를 그려내는 독창적인 인재입니다.' },
+        sports: { title: '다이나믹 피지컬 스포츠 클럽 ⚽', emoji: '⚽', desc: '에너지와 추진력이 넘치는 에이스! 팀워크를 발휘하며 땀 흘리는 액티비티 스포츠에서 주인공이 될 운명입니다.' },
+        music: { title: '록 밴드 & 유스 오케스트라 🎸', emoji: '🎸', desc: '풍부한 감성과 탁월한 표현력을 탑재한 아티스트! 세상을 울리는 음악과 무대로 사람들의 마음을 사로잡습니다.' },
+        detective: { title: '범죄심리 & 과학수사 탐정반 🔍', emoji: '🔍', desc: '예리한 관찰력과 추리력을 지닌 명탐정! 미스터리한 사건과 오차를 밝혀내는 최고의 데이터 프로파일러입니다.' },
+        social: { title: '또래상담 & 마인드 힐링 클럽 ☕', emoji: '☕', desc: '공감 능력 200%! 친구들의 마음을 어루만지고 분위기를 따뜻하게 만드는 학급의 수호자이자 수호 천사입니다.' }
+      };
+
+      const res = results[topType] || results.tech;
+      document.getElementById('clubResultEmoji').textContent = res.emoji;
+      document.getElementById('clubResultTitle').textContent = res.title;
+      document.getElementById('clubResultDesc').textContent = res.desc;
+
+      addXP(15, '동아리 MBTI 테스트 완료');
+    }
+
+    window.onload = function() {
+      updateUserUI();
+      renderQuests();
+      renderSwipeCards();
+      renderLunchMenu();
+      renderTimetable();
+      initRouletteCanvas();
+      renderLostItems();
+      renderMoodUI();
+      renderRollingPapers();
+      startCountdownTimer();
+    };
+  </script>
+</body>
+</html>
